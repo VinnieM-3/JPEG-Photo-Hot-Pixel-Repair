@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 # you must provide a mask filename and the mask jpg file must be placed in 
 # the 'masks' subfolder.  The mask file is used to locate all the
 # hot pixels.  Suggest taking a photo at ISO 1600 for at least 1/10sec with 
-# the lense cap on.  But you can create mask files pixel maps 
+# the lens cap on.  But you can create mask files pixel maps 
 # for multiple ISO settings and shutter speeds (and camera temps).
 parser.add_argument('-m', '--maskfile',
                     help='name of jpg mask file', required=True)
