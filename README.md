@@ -1,10 +1,7 @@
 # JPEG-Hot-Pixel-Photo-Fixer
 Python tool used to correct hot pixels in JPEG photographs.
 
-Requires:
-    Python 3
-    scikit-image
-    piexif
+Requires: Python 3, scikit-image, and piexif.
  
 Copy hot_pixel_remapper.py and hot_pixel_repair.py to a folder.  Then create three subfolders with the names 'originals', 'masks', and 'repaired'.
  
