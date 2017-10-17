@@ -59,6 +59,7 @@ img_mask = imread(mskdir + maskfilename)
 
 
 # scan the file for hot pixels and record coordinates in the hot_pixels list.
+numhotpixels = 0 
 hot_pixels = []
 rows = img_mask.shape[0]
 cols = img_mask.shape[1]
@@ -68,47 +69,56 @@ for y in range(0,rows):
             img_mask[y,x,1] > threshold or 
             img_mask[y,x,2] > threshold):
             hot_pixels.append((y,x))
-            
-
-# create a pixal map by selecting a replacement pixel for each hot pixel.
-pixel_map = []
-max_dist = 1  # keep track of the maximum distance for reporting purposes.
-for orgpix in hot_pixels:
-    dist = 1
-    cand_selected = False
-    while not cand_selected:
-        co = candidate_offsets(dist)
-        for offset in co:
-            cand_pix = (orgpix[0]+offset[0], orgpix[1]+offset[1])
-            
-            # check that the candidate pixel coordinates aren't negative
-            # and that the candidate pixel isn't also a hot pixel.
-            if (cand_pix[0] >= 0 and cand_pix[0] < rows and
-                cand_pix[1] >= 0 and cand_pix[1] < cols and
-                cand_pix not in hot_pixels):
-                pixel_map.append([orgpix,cand_pix])
-                cand_selected = True
+            numhotpixels += 1
+            if numhotpixels > 10000:
                 break
-        if not cand_selected:
-            dist += 1
-            max_dist = max(max_dist,dist)
+    if numhotpixels > 10000:
+        break
 
-
-# save the pixel map to a text file with the same name as the mask file
-# but with a .txt extension.  Pixel map text files are stored in 'masks'
-# subfolder.
-with open(mskdir + maskfilename + '.txt', 'w') as f:
-    for p in pixel_map:
-        f.write(str(p[0][0]) + ',' + str(p[0][1]) + ":"
-                + str(p[1][0]) + "," + str(p[1][1]) + '\n')
-
-# calculate elapsed time.  It can take a few minutes to create a pixel map
-# but you only need to do it once.
-elapsed_time = datetime.now() - startTime
-
-# output summary of results.
-s = 'mask file = {}, threshold = {}, '
-s += 'num of pixel remappings = {}, max pixel distance = {}, '
-s += 'elapsed time = {}'
-print(s.format(maskfilename, threshold, len(pixel_map), 
-               max_dist, elapsed_time))     
+if numhotpixels <= 10000:
+    # create a pixal map by selecting a replacement pixel for each hot pixel.
+    pixel_map = []
+    max_dist = 1  # keep track of the maximum distance for reporting purposes.
+    for orgpix in hot_pixels:
+        dist = 1
+        cand_selected = False
+        while not cand_selected:
+            co = candidate_offsets(dist)
+            for offset in co:
+                cand_pix = (orgpix[0]+offset[0], orgpix[1]+offset[1])
+                
+                # check that the candidate pixel coordinates aren't negative
+                # and that the candidate pixel isn't also a hot pixel.
+                if (cand_pix[0] >= 0 and cand_pix[0] < rows and
+                    cand_pix[1] >= 0 and cand_pix[1] < cols and
+                    cand_pix not in hot_pixels):
+                    pixel_map.append([orgpix,cand_pix])
+                    cand_selected = True
+                    break
+            if not cand_selected:
+                dist += 1
+                max_dist = max(max_dist,dist)
+    
+    
+    # save the pixel map to a text file with the same name as the mask file
+    # but with a .txt extension.  Pixel map text files are stored in 'masks'
+    # subfolder.
+    with open(mskdir + maskfilename + '.txt', 'w') as f:
+        for p in pixel_map:
+            f.write(str(p[0][0]) + ',' + str(p[0][1]) + ":"
+                    + str(p[1][0]) + "," + str(p[1][1]) + '\n')
+    
+    # calculate elapsed time.  It can take a few minutes to create a pixel map
+    # but you only need to do it once.
+    elapsed_time = datetime.now() - startTime
+    
+    # output summary of results.
+    s = 'mask file = {}, threshold = {}, '
+    s += 'num of pixel remappings = {}, max pixel distance = {}, '
+    s += 'elapsed time = {}'
+    print(s.format(maskfilename, threshold, len(pixel_map), 
+                   max_dist, elapsed_time))     
+else:
+    s = 'Error: More than 10,000 hot pixels found. '
+    s += 'Threshold set too low?'    
+    print(s)
