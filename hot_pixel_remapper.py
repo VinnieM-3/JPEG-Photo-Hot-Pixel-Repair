@@ -21,125 +21,133 @@
 # SOFTWARE.
 
 import argparse
-import random
-from datetime import datetime
 from skimage.io import imread
+from skimage.io import imsave
+from os import listdir
+from os.path import isfile, join
+from datetime import datetime
+import warnings
+from piexif import transplant
 
-mskdir = './masks/' # directory containing mask files and pixel maps
+# stops low contrast image warnings from cluttering output.
+warnings.filterwarnings("ignore")
 
-# record start time of script.
-startTime = datetime.now()
+orgdir = './originals/'  # directory containing files to repair.
+repdir = './repaired/'  # directory containing repaired files
+mskdir = './masks/'  # directory containing mask files and pixel maps
 
 parser = argparse.ArgumentParser()
 
-# you must provide a mask filename and the mask jpg file must be placed in 
-# the 'masks' subfolder.  The mask file is used to locate all the
-# hot pixels.  Suggest taking a photo at ISO 1600 for at least 1/10sec with 
-# the lens cap on.  But you can create mask files pixel maps 
-# for multiple ISO settings and shutter speeds (and camera temps).
-parser.add_argument('-m', '--maskfile',
-                    help='name of jpg mask file', required=True)
+# you must provide a mask file name from the 'masks' sub-folder.
+parser.add_argument('-m', '--maskfilename',
+                    help='name of jpg mask file',
+                    required=True)
 
-# you may provide a threshold level or the default value will be used.  This 
-# threshold is the limiting magnitude of any rgb color channel. 
-# The default is 16, meaning any pixel in the mask jpg file that has a red,
-# green, or blue component that exceeds 16 will be considered a hot pixel.
-parser.add_argument('-t', '--threshold', type=int,
-                    help='threshold value 8 - 255', required=False,
-                    default=16)
+# you may also provide the file name of the jpg that you want repaired.  It must be
+# placed in the the 'originals' sub-folder.  Repaired files are placed in
+# 'repaired' sub-folder. if you don't provide a filename,
+# all files in the 'originals' sub-folder will be repaired.
+parser.add_argument('-f', '--jpgfilename',
+                    help='name of jpg file needing hot pixel repair',
+                    required=False, default='None')
 
-# parse the input mask filename and optional threshold value.
-# for example: python hot_pixel_remapper.py -m D200_1600.JPG -t 32
+# parse the input mask file name and optional jpg file you want to repair.
 args = parser.parse_args()
-maskfilename = args.maskfile
-threshold = args.threshold
+maskfilename = args.maskfilename
+imgfile = args.jpgfilename
 
+# read in pixel map from text file that matches mask file name.
+# the pixel map text file is created using hot_pixel_remapper.py
+pixel_map = []
+with open(mskdir + maskfilename + '.txt', 'r') as f:
+    lines = f.read().splitlines()
+    for line in lines:
+        pnts = line.split(':')
+        orgpix = pnts[0].split(',')
+        reppix = pnts[1].split(',')               
+        if orgpix[0].isdigit() and orgpix[1].isdigit() and reppix[0].isdigit() and reppix[1].isdigit():
+            pixel_map.append([(int(orgpix[0]), int(orgpix[1])),
+                              (int(reppix[0]), int(reppix[1]))])
+        else:
+            print('Error = {}'.format(line))
 
-# simple algorithm used to select potential replacement pixels from those 
-# surrounding the hot pixel.  If the hot pixel is surrounded by other
-# hot pixels, the distance from the hot pixel is increased
-# until a suitable nearby replacement is found.  Some randomness is also 
-# added to avoid any potential patterns caused by a bunch of hot pixels located
-# adjacent to one another.
-random.seed(9)
-def candidate_offsets(dist):
-    c = []   
-    for x in range(-dist, dist+1):
-        c.append((x,-dist))
-    for x in range(-dist, dist+1):
-        c.append((x,dist))
-    for x in range(-dist+1, dist):
-        c.append((-dist,x))
-    for x in range(-dist+1, dist):
-        c.append((dist,x))
-    random.shuffle(c)   
-    return c
+# if you supply a filename, only that file will be repaired.  The file must be 
+# located in the 'originals' folder.
+if imgfile != 'None':
 
-# read the mask file from the 'masks' subfolder
-img_mask = imread(mskdir + maskfilename)
+    # make sure the file has a jpg or jpeg extension
+    if imgfile.lower().endswith(('.jpg', '.jpeg')):
+        
+        # check that repair file does not already exist.
+        if not isfile(repdir + imgfile.replace('.', 'r.')):
+    
+            startTime = datetime.now()
+        
+            img = imread(orgdir + imgfile)
+            for pix in pixel_map:
+                img[pix[0][0], pix[0][1]] = img[pix[1][0], pix[1][1]]
+            
+            # save file with an 'r' at the end of the filename to indicate
+            # it was repaired. quality=98 appears to create a file of 
+            # approx the same size as the original.
+            imsave(repdir + imgfile.replace('.', 'r.'), img, quality=98)
+        
+            # copy the EXIF data from the original file to the repaired file.
+            transplant(orgdir + imgfile, repdir + imgfile.replace('.', 'r.'))
+            
+            elapsed_time = datetime.now() - startTime   
+            
+            s = 'orig file = {}, mask file = {}, '
+            s += 'elapsed time = {} num of pixel remappings = {}, '
+            print(s.format(imgfile, maskfilename, len(pixel_map), 
+                           elapsed_time))
+        else:
+            s = 'Error: File {} already exists'
+            print(s.format(repdir + imgfile))
+    else:
+        s = 'Error: File {} does not end with .jpg or jpeg'
+        print(s.format(repdir + imgfile))
+    
+else:  # repair all files in the 'originals' folder.
 
-
-# scan the file for hot pixels and record coordinates in the hot_pixels list.
-numhotpixels = 0 
-hot_pixels = []
-rows = img_mask.shape[0]
-cols = img_mask.shape[1]
-for y in range(0,rows):
-    for x in range(0,cols):
-        if (img_mask[y,x,0] > threshold or 
-            img_mask[y,x,1] > threshold or 
-            img_mask[y,x,2] > threshold):
-            hot_pixels.append((y,x))
-            numhotpixels += 1
-            if numhotpixels > 10000:
-                break
-    if numhotpixels > 10000:
-        break
-
-if numhotpixels <= 10000:
-    # create a pixal map by selecting a replacement pixel for each hot pixel.
-    pixel_map = []
-    max_dist = 1  # keep track of the maximum distance for reporting purposes.
-    for orgpix in hot_pixels:
-        dist = 1
-        cand_selected = False
-        while not cand_selected:
-            co = candidate_offsets(dist)
-            for offset in co:
-                cand_pix = (orgpix[0]+offset[0], orgpix[1]+offset[1])
+    numfilesrepaired = 0
+      
+    s = 'mask file = {}, num of pixel remappings = {}'
+    print(s.format(maskfilename, len(pixel_map)))
+    
+    # get list of files in the 'originals' sub-folder
+    onlyfiles = [f for f in listdir(orgdir) if isfile(join(orgdir, f))]
+    
+    for imgfile in onlyfiles:
+        
+        # make sure the file has a jpg or jpeg extension
+        if imgfile.lower().endswith(('.jpg', '.jpeg')):
+            
+            # check that repair file does not already exist.
+            if not isfile(repdir + imgfile.replace('.', 'r.')):
+        
+                startTime = datetime.now()
                 
-                # check that the candidate pixel coordinates aren't negative
-                # and that the candidate pixel isn't also a hot pixel.
-                if (cand_pix[0] >= 0 and cand_pix[0] < rows and
-                    cand_pix[1] >= 0 and cand_pix[1] < cols and
-                    cand_pix not in hot_pixels):
-                    pixel_map.append([orgpix,cand_pix])
-                    cand_selected = True
-                    break
-            if not cand_selected:
-                dist += 1
-                max_dist = max(max_dist,dist)
+                img = imread(orgdir + imgfile)
+                for pix in pixel_map:
+                    img[pix[0][0], pix[0][1]] = img[pix[1][0], pix[1][1]]
+                   
+                # save repaired file in 'repaired' sub-folder
+                imsave(repdir + imgfile.replace('.', 'r.'), img, quality=98)
+                
+                # copy EXIF data from original file to repaired file.
+                transplant(orgdir + imgfile, repdir + imgfile.replace('.',
+                                                                      'r.'))
+            
+                elapsed_time = datetime.now() - startTime
+            
+                s = 'file = {}, elapsed time = {}'
+                print(s.format(imgfile, elapsed_time))
+                
+                numfilesrepaired += 1
+            else:
+                s = 'Error: File {} already exists'
+                print(s.format(repdir + imgfile.replace('.', 'r.')))
     
-    
-    # save the pixel map to a text file with the same name as the mask file
-    # but with a .txt extension.  Pixel map text files are stored in 'masks'
-    # subfolder.
-    with open(mskdir + maskfilename + '.txt', 'w') as f:
-        for p in pixel_map:
-            f.write(str(p[0][0]) + ',' + str(p[0][1]) + ":"
-                    + str(p[1][0]) + "," + str(p[1][1]) + '\n')
-    
-    # calculate elapsed time.  It can take a few minutes to create a pixel map
-    # but you only need to do it once.
-    elapsed_time = datetime.now() - startTime
-    
-    # output summary of results.
-    s = 'mask file = {}, threshold = {}, '
-    s += 'num of pixel remappings = {}, max pixel distance = {}, '
-    s += 'elapsed time = {}'
-    print(s.format(maskfilename, threshold, len(pixel_map), 
-                   max_dist, elapsed_time))     
-else:
-    s = 'Error: More than 10,000 hot pixels found. '
-    s += 'Threshold set too low?'    
-    print(s)
+    s = 'Done! Number of files repaired = {}'
+    print(s.format(numfilesrepaired))   
