@@ -12,15 +12,3 @@ Next, copy the jpeg files you want repaired to the 'originals' subfolder and run
 For example: python hot_pixel_repair.py -m D200_1600.JPG.  
 
 When the script is done running the 'repaired' subfolder will contain the repaired jpeg files.
-
-Here's an example:
-
-Here's the original image, highlighting one small section: 
-![original image](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/orginal_highlight.JPG)
-
-Here's a closeup of the section clearly showing 5 hot pixels: 
-![original image](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/orginal_section.JPG)
-
-Here's the same section after running the Python script: 
-![original image](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/repaired_section.JPG)
-
