@@ -1,4 +1,4 @@
-# JPEG Hot Pixel Photo Fixer
+# JPEG Photo Hot Pixel Repair
 This Python tool can be used to remove hot pixels from JPEG photographs.
 
 Requires: Python 3, scikit-image, and piexif.
