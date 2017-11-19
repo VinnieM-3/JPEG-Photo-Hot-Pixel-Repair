@@ -18,8 +18,8 @@ example:
 image from camera:
 ![image from camera](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/image.JPG)
 
-closeup section with multiple hot pixels - before:
+closeup section with multiple hot pixels, before running script:
 ![closeup section with hot pixels - before](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/before.jpg)
 
-closeup section with multiple hot pixels - after running script
+closeup section after running script
 ![closep section with hot pixels - after](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/after.jpg)
