@@ -15,8 +15,7 @@ When the script is done running the 'repaired' subfolder will contain the repair
 
 example:
 
-image from camera:
-![image from camera](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/image.jpg)
+![image from camera](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/image.JPG)
 
 closeup section with multiple hot pixels - before:
 ![closeup section with hot pixels - before](https://github.com/VinnieM-3/JPEG-Photo-Hot-Pixel-Repair/blob/master/before.jpg)
